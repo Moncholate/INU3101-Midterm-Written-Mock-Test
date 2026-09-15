@@ -500,8 +500,8 @@ function getRadio(name) { const c = document.querySelector(`input[name="${name}"
 function normalizeText(text) {
   return (text || '').toLowerCase().trim()
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .replace(/[''´`]/g, "'")
-    .replace(/\s+/g, ' ')
+    .replace(/['''´`]/g, '')
+    .replace(/\s+/g, '')
     .replace(/-/g, '');
 }
 function toggleEs(id) {
