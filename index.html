@@ -827,6 +827,7 @@ function updateWithGeminiScores() {
 function buildSummaryDots(containerId, items) {
   const container = document.getElementById(containerId);
   if (!container) return;
+  container.classList.add('summary-dots');
   container.innerHTML = items.map((item,i) =>
     `<div class="dot ${item.correct ? 'correct' : 'incorrect'}" title="Pregunta ${i+1}: ${item.correct ? 'Correcta' : 'Incorrecta'}"></div>`
   ).join('');
