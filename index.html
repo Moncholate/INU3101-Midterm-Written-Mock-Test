@@ -246,12 +246,7 @@ audio { width:100%; border-radius:8px; margin-bottom:8px; }
           <div class="play-counter" id="counter_audioA">Plays: 0 / 2</div>
         </div>
 
-        <div class="q-block"><div class="q-label"><span class="q-num">1.</span> A calendar</div><input type="text" id="la1" oninput="saveAll()"></div>
-        <div class="q-block"><div class="q-label"><span class="q-num">2.</span> A charger</div><input type="text" id="la2" oninput="saveAll()"></div>
-        <div class="q-block"><div class="q-label"><span class="q-num">3.</span> Glasses</div><input type="text" id="la3" oninput="saveAll()"></div>
-        <div class="q-block"><div class="q-label"><span class="q-num">4.</span> A ticket</div><input type="text" id="la4" oninput="saveAll()"></div>
-        <div class="q-block"><div class="q-label"><span class="q-num">5.</span> A watch</div><input type="text" id="la5" oninput="saveAll()"></div>
-        <div class="q-block"><div class="q-label"><span class="q-num">6.</span> An umbrella</div><input type="text" id="la6" oninput="saveAll()"></div>
+        <div id="listeningAContainer"></div>
 
         <hr class="part-divider">
 
@@ -298,7 +293,7 @@ audio { width:100%; border-radius:8px; margin-bottom:8px; }
           <div class="es-block" id="es-ra">Usa los verbos del recuadro para completar las oraciones. Cambia la forma cuando sea necesario.</div>
         </div>
 
-        <div class="word-bank">Swim &nbsp;–&nbsp; Wear &nbsp;–&nbsp; Not run &nbsp;–&nbsp; Shower &nbsp;–&nbsp; Not eat &nbsp;–&nbsp; Check</div>
+        <div class="word-bank"><span id="readingAWordBank"></span></div>
 
         <div class="q-block"><div class="q-label"><span class="q-num">1.</span> _______________ before you get in the pool, please.</div><input type="text" id="ra1" oninput="saveAll()"></div>
         <div class="q-block"><div class="q-label"><span class="q-num">2.</span> _______________ near the pool, it's dangerous!</div><input type="text" id="ra2" oninput="saveAll()"></div>
@@ -619,15 +614,45 @@ function updateRubric() {
 }
 
 // ── GRADING: LISTENING A & B ──
-const listeningAKey = { la1:'sofia', la2:'sofia', la3:'mateo', la4:'mateo', la5:'camila', la6:'camila' };
+// Un solo arreglo canónico: se usa para renderizar la tabla (en orden mezclado),
+// para corregir (por id, no por posición) y para construir el feedback — evita
+// que las etiquetas queden desincronizadas entre el HTML y el feedback.
+const LISTENING_A_ITEMS = [
+  { id: 'la1', text: 'A calendar', answer: 'sofia', answerLabel: 'Sofía' },
+  { id: 'la2', text: 'A charger',  answer: 'sofia', answerLabel: 'Sofía' },
+  { id: 'la3', text: 'Glasses',    answer: 'mateo', answerLabel: 'Mateo' },
+  { id: 'la4', text: 'A ticket',   answer: 'mateo', answerLabel: 'Mateo' },
+  { id: 'la5', text: 'A watch',    answer: 'camila', answerLabel: 'Camila' },
+  { id: 'la6', text: 'An umbrella', answer: 'camila', answerLabel: 'Camila' }
+];
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+// Seguro randomizar el ORDEN de las filas: la corrección compara el texto
+// tipeado contra la clave fija por id (la1..la6), no por posición visual —
+// no es un matching de letras A–G, así que no invalida ninguna clave (Rule 8).
+function renderListeningA() {
+  const shuffled = shuffle([...LISTENING_A_ITEMS]);
+  document.getElementById('listeningAContainer').innerHTML = shuffled.map((item, i) => `
+    <div class="q-block"><div class="q-label"><span class="q-num">${i+1}.</span> ${item.text}</div><input type="text" id="${item.id}" oninput="saveAll()"></div>
+  `).join('');
+}
+
+function gradeListeningA(id) {
+  const item = LISTENING_A_ITEMS.find(it => it.id === id);
+  return normalizeText(g(id)) === item.answer ? 1 : 0;
+}
 const listeningBKey = {
   lb1: ['rodrigo'], lb2: ['salas'], lb3: ['24'],
   lb4: ['nunoa'], lb5: ['5552083671'], lb6: ['45']
 };
 
-function gradeListeningA(id) {
-  return normalizeText(g(id)) === listeningAKey[id] ? 1 : 0;
-}
 function gradeListeningB(id) {
   let ans = normalizeText(g(id));
   if (id === 'lb5') ans = ans.replace(/\D/g, '');
@@ -635,6 +660,16 @@ function gradeListeningB(id) {
 }
 
 // ── GRADING: READING A ──
+const READING_A_WORD_BANK = ['Swim', 'Wear', 'Not run', 'Shower', 'Not eat', 'Check'];
+
+// Rule 8 del NNR: los word banks de secciones fill-in-the-blank deben
+// randomizarse al cargar la página con Fisher-Yates. Es seguro aquí porque
+// la corrección compara el texto tipeado en cada blank contra su clave fija
+// por id (ra1..ra6) — el orden visual del banco no afecta la corrección.
+function renderReadingAWordBank() {
+  document.getElementById('readingAWordBank').textContent = shuffle([...READING_A_WORD_BANK]).join('  –  ');
+}
+
 const readingAKey = {
   ra1: ['shower'],
   ra2: ["dontrun", "donotrun"],
@@ -809,7 +844,7 @@ function buildSectionMsg(elId, correct, total, tips) {
 
 function buildFeedback(listeningScore, readingScore, writingScore) {
   // LISTENING
-  const laItems = ['la1','la2','la3','la4','la5','la6'].map((id,i) => ({id, correct: gradeListeningA(id)===1, label: ['A calendar','A charger','Glasses','A ticket','A watch','An umbrella'][i], answer: ['Sofía','Sofía','Mateo','Mateo','Camila','Camila'][i]}));
+  const laItems = LISTENING_A_ITEMS.map(item => ({id: item.id, correct: gradeListeningA(item.id)===1, label: item.text, answer: item.answerLabel}));
   const lbItems = ['lb1','lb2','lb3','lb4','lb5','lb6'].map((id,i) => ({id, correct: gradeListeningB(id)===1, label: ['First name','Last name','Age','Neighborhood','Emergency phone number','Locker number'][i], answer: ['Rodrigo','Salas','24','Ñuñoa','555-208-3671','45'][i]}));
   buildSummaryDots('listeningDots', laItems.concat(lbItems));
   let lHtml = laItems.concat(lbItems).map((it,i) => `
@@ -883,6 +918,8 @@ function setFeedbackFilter(filter) {
 
 // ── INIT ──
 window.onload = function() {
+  renderListeningA();
+  renderReadingAWordBank();
   loadSaved();
   updateWordCount();
 };
